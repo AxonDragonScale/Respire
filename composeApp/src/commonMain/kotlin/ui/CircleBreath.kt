@@ -19,8 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.delay
-import model.BreathState.EXHALE
-import model.BreathState.INHALE
+import model.BreathState
+import model.Exhale
+import model.Inhale
 import model.TwoStepBreathConfig
 
 /**
@@ -32,54 +33,54 @@ fun CircleBreath(
     modifier: Modifier = Modifier,
     config: TwoStepBreathConfig,
 ) {
-    Box(
-        modifier = modifier
-            .aspectRatio(1F)
-            .fillMaxSize(0.8F)
-            .background(Color.Transparent),
-        contentAlignment = Alignment.Center,
-    ) {
-        // Outer Circle
+    Box(modifier = modifier) {
         Box(
-            modifier = Modifier
-                .fillMaxSize(0.8F)
-                .clip(CircleShape)
-                .background(Color.Red.copy(alpha = 0.5F))
-        )
+            // Aspect Ratio does not work properly if there is another modifier like fillMaxSize
+            // before it. So, keeping it in a separate.
+            modifier = Modifier.aspectRatio(1F),
+            contentAlignment = Alignment.Center,
+        ) {
+            // Outer Circle
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(0.8F)
+                    .clip(CircleShape)
+                    .background(Color.Red.copy(alpha = 0.5F))
+            )
 
-        // Animating Circle
-        var state by remember { mutableStateOf(EXHALE) }
-        val animatableSize = remember { Animatable(0.4F) }
-        LaunchedEffect(Unit) {
-            while (true) {
-                state = if (state == INHALE) EXHALE else INHALE
-                delay(if (state == INHALE) config.inhale else config.exhale)
+            // Animating Circle
+            var state by remember { mutableStateOf<BreathState>(Exhale(0L)) }
+            val animatableSize = remember { Animatable(0.4F) }
+            LaunchedEffect(Unit) {
+                while (true) {
+                    state = if (state is Inhale) Exhale(config.exhale) else Inhale(config.inhale)
+                    delay(state.duration)
+                }
             }
-        }
-        LaunchedEffect(state) {
-            animatableSize.animateTo(
-                targetValue = if (state == INHALE) 0.8F else 0.4F,
-                animationSpec = tween(
-                    durationMillis = if (state == INHALE) config.inhale.toInt()
-                                     else config.exhale.toInt(),
-                    easing = LinearEasing
+            LaunchedEffect(state) {
+                animatableSize.animateTo(
+                    targetValue = if (state is Inhale) 0.8F else 0.4F,
+                    animationSpec = tween(
+                        durationMillis = state.duration.toInt(),
+                        easing = LinearEasing
+                    )
                 )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(animatableSize.value)
+                    .clip(CircleShape)
+                    .background(Color.Red.copy(alpha = 0.7F))
+            )
+
+            // Inner Circle
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(0.4F)
+                    .clip(CircleShape)
+                    .background(Color.Red)
             )
         }
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize(animatableSize.value)
-                .clip(CircleShape)
-                .background(Color.Red.copy(alpha = 0.7F))
-        )
-
-        // Inner Circle
-        Box(
-            modifier = Modifier
-                .fillMaxSize(0.4F)
-                .clip(CircleShape)
-                .background(Color.Red)
-        )
     }
 }
